@@ -74,11 +74,11 @@ public class NewsController {
             } else if (boundaries.containsKey("lokSabha")) {
                 resolvedCode = boundaries.get("lokSabha").getCode();
             } else {
-                resolvedCode = "GLOBAL";
+                resolvedCode = "WARD-01";
             }
         }
         
-        if (resolvedCode == null || resolvedCode.isEmpty()) {
+        if (resolvedCode == null || resolvedCode.isEmpty() || "GLOBAL".equals(resolvedCode)) {
             resolvedCode = "WARD-01"; // Fallback default
         }
         

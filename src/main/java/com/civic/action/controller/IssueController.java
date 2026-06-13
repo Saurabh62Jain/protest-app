@@ -169,7 +169,7 @@ public class IssueController {
         var boundaries = spatialResolutionService.resolvePoliticalHierarchy(latitude, longitude);
         
         // Default to ward boundary or assembly constituency
-        String targetCode = "GLOBAL";
+        String targetCode = "WARD-01";
         if (boundaries.containsKey("ward")) {
             targetCode = boundaries.get("ward").getCode();
         } else if (boundaries.containsKey("vidhanSabha")) {
@@ -192,7 +192,7 @@ public class IssueController {
         
         var boundaries = spatialResolutionService.resolvePoliticalHierarchy(latitude, longitude);
         
-        String targetCode = "GLOBAL";
+        String targetCode = "WARD-01";
         if (boundaries.containsKey("ward")) {
             targetCode = boundaries.get("ward").getCode();
         } else if (boundaries.containsKey("vidhanSabha")) {
