@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  # PostgreSQL database with PostGIS spatial extension pre-installed
+  postgres:
+    image: postgis/postgis:15-3.3
+    container_name: protest-postgres
+    environment:
+      POSTGRES_DB: protest_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Automatically run schema.sql when initializing the database
+      - ./src/main/resources/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    restart: always
+
+  # MongoDB Document Database
+  mongodb:
+    image: mongo:6.0
+    container_name: protest-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    restart: always
+
+  # Redis In-Memory Key-Value Store for caching OTPs
+  redis:
+    image: redis:7.0-alpine
+    container_name: protest-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: always
+
+  # Psychiatry Chatbot Python Microservice
+  psychiatry-api:
+    build:
+      context: ./psychiatry-chatbot
+      dockerfile: Dockerfile
+    container_name: protest-psychiatry-api
+    ports:
+      - "5001:5001"
+    environment:
+      - HF_TOKEN=${HF_TOKEN}
+    restart: always
+
+  # Spring Boot Backend Social Media Application
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: protest-backend
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_POSTGRES_HOST=postgres
+      - DB_MONGO_HOST=mongodb
+      - DB_REDIS_HOST=redis
+      - PSYCHIATRY_HOST=psychiatry-api
+    depends_on:
+      - postgres
+      - mongodb
+      - redis
+      - psychiatry-api
+    restart: always
+
+volumes:
+  postgres_data:
+  mongodb_data:
+  redis_data:

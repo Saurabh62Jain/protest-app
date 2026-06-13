@@ -1,0 +1,48 @@
+spring:
+  application:
+    name: protest-app
+
+  # PostgreSQL & PostGIS Configuration
+  datasource:
+    url: jdbc:postgresql://${DB_POSTGRES_HOST:localhost}:5432/protest_db
+    username: postgres
+    password: password
+    driver-class-name: org.postgresql.Driver
+  
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  # MongoDB Configuration
+  data:
+    mongodb:
+      uri: mongodb://${DB_MONGO_HOST:localhost}:27017/protest_db
+    
+    # Redis Configuration
+    redis:
+      host: ${DB_REDIS_HOST:localhost}
+      port: 6379
+
+  # Messages Resource Bundle for Internationalization (i18n)
+  messages:
+    basename: i18n/messages
+    encoding: UTF-8
+    fallback-to-system-locale: true
+
+# JWT Security Configurations
+app:
+  jwt:
+    secret: 9a7263528b1239c09d57a912f293b6e82a938c47f5b9d7e6c4a3b2a19f8e7d6c
+    expiration-ms: 86400000 # 24 Hours
+  otp:
+    expiry-minutes: 5
+  hf:
+    token: ${HF_TOKEN:}
+    model-url: "https://router.huggingface.co/v1/chat/completions"
+  psychiatry:
+    url: "http://${PSYCHIATRY_HOST:localhost}:5001/chat"

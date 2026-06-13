@@ -1,0 +1,41 @@
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/resources/gradle/wrapper/gradle-wrapper.jar
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea/
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+### VS Code ###
+.vscode/
+
+### OS Files ###
+.DS_Store
+Thumbs.db
+
+### Local dependencies/tools in workspace ###
+jdk/
+maven/
+err.log
+out.log
+*.log
+dbs/
+.env

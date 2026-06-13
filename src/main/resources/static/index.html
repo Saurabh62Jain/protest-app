@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Protest App | Control Panel</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#6366f1">
+  
+  <!-- Apple Mobile Web App Meta Tags -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Protest App">
+  <link rel="apple-touch-icon" href="icon-192.png">
+
+  <!-- Leaflet CSS & JS for Map Fallback -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <!-- Google Identity Services (GSI) Client -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+
+  <!-- Toast Notifications -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Authentication Overlay -->
+  <div id="auth-overlay" class="auth-wrapper">
+    <div class="auth-card glass-card">
+      <div class="auth-header">
+        <div class="auth-logo">📣</div>
+        <h1 class="auth-title">Protest App</h1>
+        <p class="auth-desc">Secure citizen-led protest & monitoring platform</p>
+      </div>
+
+      <!-- Phone Form -->
+      <form id="login-phone-form">
+        <div class="form-group">
+          <label class="form-label" for="login-mobile">Mobile Number (10 Digits)</label>
+          <input class="form-input" type="tel" id="login-mobile" placeholder="9876543210" required value="9876543210" pattern="[0-9]{10}" maxlength="10" minlength="10" title="Please enter exactly 10 digits">
+        </div>
+        <button class="btn btn-primary" style="width: 100%; margin-top: 1rem;" type="submit">Request OTP</button>
+      </form>
+
+      <!-- OTP Form (Hidden initially) -->
+      <form id="login-otp-form" style="display: none;">
+        <div class="form-group">
+          <label class="form-label" for="login-otp">Enter 6-Digit OTP</label>
+          <input class="form-input" type="text" id="login-otp" placeholder="123456" required value="123456">
+          <p style="color: var(--text-secondary); font-size: 0.8rem; margin-top: 0.5rem;">Demo override: Enter <strong>123456</strong> to sign in instantly.</p>
+        </div>
+        <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+          <button class="btn btn-secondary" type="button" onclick="resetAuthFlow()">Back</button>
+          <button class="btn btn-accent" style="flex: 1;" type="submit">Verify & Login</button>
+        </div>
+      </form>
+      <div style="margin: 1.5rem 0; text-align: center; color: var(--text-secondary); position: relative;">
+        <span style="background: var(--bg-card); padding: 0 0.5rem; position: relative; z-index: 1;">or</span>
+        <hr style="border: 0; border-top: 1px solid var(--border); position: absolute; top: 50%; left: 0; right: 0; margin: 0; z-index: 0;">
+      </div>
+      <div id="google-login-btn-container" style="display: flex; justify-content: center; margin-top: 0.5rem;">
+        <div id="google-signin-btn"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Voter Link Overlay (Hidden initially) -->
+  <div id="voter-overlay" class="auth-wrapper" style="display: none;">
+    <div class="auth-card glass-card">
+      <div class="auth-header">
+        <div class="auth-logo">🪪</div>
+        <h1 class="auth-title">Link Voter ID</h1>
+        <p class="auth-desc">A valid Voter ID is required to raise local issues</p>
+      </div>
+      <form id="voter-link-form">
+        <div class="form-group">
+          <label class="form-label" for="voter-id">Voter ID Number</label>
+          <input class="form-input" type="text" id="voter-id" placeholder="ABC1234567" required value="ABC1234567">
+        </div>
+        <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+          <button class="btn btn-secondary" type="button" onclick="skipVoterLinking()">Skip for Now</button>
+          <button class="btn btn-primary" style="flex: 1;" type="submit">Link & Proceed</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Main Dashboard App Layout -->
+  <header class="navbar">
+    <div class="nav-brand"><span>📣</span> Protest App</div>
+    <div class="search-bar-container" style="display: flex; gap: 0.5rem; align-items: center; max-width: 400px; flex: 1; margin: 0 2rem;">
+      <input type="text" id="global-search-input" placeholder="Search ID (e.g. ISSUE-000001)..." class="form-input" style="padding: 0.4rem 0.8rem; font-size: 0.9rem; border-radius: 8px;" onkeydown="if(event.key === 'Enter') triggerGlobalSearch()">
+      <button class="btn btn-primary" onclick="triggerGlobalSearch()" style="padding: 0.4rem 0.9rem; font-size: 0.9rem; border-radius: 8px; box-shadow: none;">Search</button>
+    </div>
+    <div class="user-status">
+      <span id="user-display-mobile" style="font-weight: 500; font-size: 0.95rem;"></span>
+      <span id="user-display-role" class="badge">ROLE_CITIZEN</span>
+      <button class="btn-logout" onclick="logout()">Logout</button>
+    </div>
+  </header>
+
+  <div class="dashboard-container">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="glass-card">
+        <nav>
+          <ul class="sidebar-nav">
+            <li>
+              <a class="sidebar-link active" onclick="switchTab('feed-panel', this)">
+                <span>📰</span> Issues Feed
+              </a>
+            </li>
+            <li id="nav-raise-issue">
+              <a class="sidebar-link" onclick="switchTab('raise-panel', this)">
+                <span>✏️</span> Raise an Issue
+              </a>
+            </li>
+            <li>
+              <a class="sidebar-link" onclick="switchTab('surveys-panel', this)">
+                <span>📊</span> Boundary Surveys
+              </a>
+            </li>
+            <li>
+              <a class="sidebar-link" onclick="switchTab('bulletin-panel', this)">
+                <span>📢</span> News Bulletin
+              </a>
+            </li>
+            <li id="nav-approver-actions" style="display: none;">
+              <a class="sidebar-link approver-only" onclick="switchTab('approver-panel', this)">
+                <span>⚖️</span> Approver Checklist
+              </a>
+            </li>
+            <li id="nav-admin-panel" style="display: none;">
+              <a class="sidebar-link" onclick="switchTab('admin-panel', this)">
+                <span>⚖️</span> Administration
+              </a>
+            </li>
+            <li>
+              <a class="sidebar-link" onclick="switchTab('chat-panel', this)">
+                <span>🤖</span> Chat with AI
+              </a>
+            </li>
+            <li>
+              <a class="sidebar-link" onclick="switchTab('settings-panel', this)">
+                <span>⚙️</span> API Settings
+              </a>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    </aside>
+
+    <!-- Main Content Panel -->
+    <main class="main-content">
+      
+      <!-- Panel: Issues Feed -->
+      <section id="feed-panel" class="section-panel active">
+        <div class="panel-header">
+          <h2 class="panel-title">Protest Issues Feed</h2>
+          <p class="panel-subtitle">Trending and verified local reports within your active boundary</p>
+        </div>
+        <div class="glass-card" style="margin-bottom: 1.5rem; display: flex; gap: 1rem; align-items: center; justify-content: space-between;">
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <span>📍</span>
+            <span id="location-status-text" style="font-weight: 500; color: var(--text-secondary);">Detecting location...</span>
+            <input type="hidden" id="feed-lat" value="23.2599">
+            <input type="hidden" id="feed-lng" value="77.4126">
+          </div>
+          <div style="display: flex; gap: 0.5rem;">
+            <button class="btn btn-accent" onclick="detectUserLocationForFeed()">🔄 Re-detect Location</button>
+          </div>
+        </div>
+        <div id="feed-map" style="height: 250px; border-radius: var(--radius); margin-bottom: 1.5rem; border: 1px solid var(--border); overflow: hidden; z-index: 1;"></div>
+        <div id="issues-list" class="issues-grid">
+          <!-- Dynamically populated issues -->
+        </div>
+      </section>
+
+      <!-- Panel: Chat with AI -->
+      <section id="chat-panel" class="section-panel">
+        <div class="panel-header">
+          <h2 class="panel-title">AI Triage Assistant</h2>
+          <p class="panel-subtitle">Talk to our AI to report issues, get emergency routing, or speak with our psychiatry assistant</p>
+        </div>
+        <div class="glass-card chat-wrapper" style="display: flex; flex-direction: column; height: 500px; padding: 1.5rem;">
+          <div id="chat-messages" style="flex: 1; overflow-y: auto; margin-bottom: 1.5rem; padding-right: 0.5rem; display: flex; flex-direction: column; gap: 1rem;">
+            <!-- Chat history populated dynamically -->
+            <div class="chat-message bot">
+              <div class="message-content">Hello! I'm your Protest App AI Assistant. How can I help you today? You can report a protest issue, ask for emergency support (police/hospital), or consult our psychiatry therapist.</div>
+            </div>
+          </div>
+          <div style="display: flex; gap: 0.5rem;">
+            <input type="text" id="chat-input" class="form-input" style="flex: 1; margin-bottom: 0;" placeholder="Type your message here..." onkeydown="if(event.key === 'Enter') sendChatMessage()">
+            <button class="btn btn-primary" onclick="sendChatMessage()" style="padding: 0.6rem 1.5rem; border-radius: 8px;">Send</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Panel: Raise Issue -->
+      <section id="raise-panel" class="section-panel">
+        <div class="panel-header">
+          <h2 class="panel-title">Raise an Issue</h2>
+          <p class="panel-subtitle">Report problems to draw community & government attention</p>
+        </div>
+        <div class="glass-card">
+          <form id="raise-issue-form">
+            <div class="form-group">
+              <label class="form-label" for="issue-title">Title</label>
+              <input class="form-input" type="text" id="issue-title" placeholder="e.g. Garbage piling up in block C lane" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="issue-desc">Description</label>
+              <textarea class="form-textarea" id="issue-desc" rows="4" placeholder="Detailed explanation of the issue..." required></textarea>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+              <div class="form-group">
+                <label class="form-label" for="issue-lat">Latitude</label>
+                <input class="form-input" type="number" id="issue-lat" value="23.2599" step="0.000001" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="issue-lng">Longitude</label>
+                <input class="form-input" type="number" id="issue-lng" value="77.4126" step="0.000001" required>
+              </div>
+            </div>
+            <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; align-items: center;">
+              <button class="btn btn-secondary" type="button" onclick="locateUserForIssue()">📍 Detect Current Location</button>
+              <span style="font-size: 0.85rem; color: var(--text-secondary);">Or click on the map below to place a pin:</span>
+            </div>
+            <div id="raise-map" style="height: 250px; border-radius: var(--radius); margin-bottom: 1.5rem; border: 1px solid var(--border); overflow: hidden; z-index: 1;"></div>
+            <div class="form-group">
+              <label class="form-label" for="issue-image-url">Photo URL</label>
+              <input class="form-input" type="url" id="issue-image-url" value="https://images.unsplash.com/photo-1618477388954-7852f32655ec?q=80&w=600" placeholder="https://images.unsplash.com/...">
+            </div>
+            <button class="btn btn-primary" type="submit">Submit Protest Issue</button>
+          </form>
+        </div>
+      </section>
+
+      <!-- Panel: Surveys -->
+      <section id="surveys-panel" class="section-panel">
+        <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
+          <div>
+            <h2 class="panel-title">Local Decision Surveys</h2>
+            <p class="panel-subtitle">Give feedback on developer proposals & public budgeting</p>
+          </div>
+          <button class="btn btn-accent" onclick="openSurveySummaryModal()" style="display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0;">
+            📊 Survey Analytics
+          </button>
+        </div>
+        
+        <div class="glass-card" style="margin-bottom: 2rem;" id="create-survey-section">
+          <h3 style="margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between;">
+            <span style="display: flex; align-items: center; gap: 0.5rem;">📊 Create a New Boundary Survey</span>
+            <button type="button" class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;" onclick="addQuestionField()">➕ Add Question</button>
+          </h3>
+          <form id="create-survey-form">
+            <div class="form-group">
+              <label class="form-label" for="survey-title">Survey Title</label>
+              <input class="form-input" type="text" id="survey-title" placeholder="e.g. Metro Route Extension Phase 4" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="survey-desc">Description</label>
+              <textarea class="form-textarea" id="survey-desc" rows="2" placeholder="Details of the survey context..." required></textarea>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+              <div class="form-group">
+                <label class="form-label" for="survey-boundary-code">Target Boundary Code</label>
+                <input class="form-input" type="text" id="survey-boundary-code" placeholder="e.g. WARD-01" required value="WARD-01">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="survey-expiration">Expiration Date & Time</label>
+                <input class="form-input" type="datetime-local" id="survey-expiration" required>
+              </div>
+            </div>
+
+            <!-- Dynamic Questions Section -->
+            <div style="margin-top: 1.5rem; border-top: 1px solid var(--border-glass); padding-top: 1.25rem;">
+              <div id="survey-questions-container">
+                <!-- Dynamic question blocks will be inserted here -->
+              </div>
+            </div>
+
+            <button class="btn btn-primary" style="margin-top: 1rem; width: 100%;" type="submit">Create Pending Survey</button>
+          </form>
+        </div>
+
+        <div id="surveys-list">
+          <!-- Dynamically populated surveys -->
+        </div>
+      </section>
+
+      <!-- Panel: News Bulletin -->
+      <section id="bulletin-panel" class="section-panel">
+        <div class="panel-header">
+          <h2 class="panel-title">Local Programs & Ephemeral Bulletins</h2>
+          <p class="panel-subtitle">Official announcements valid for limited time</p>
+        </div>
+
+        <div class="glass-card" style="margin-bottom: 2rem; display: none;" id="create-bulletin-section">
+          <h3 style="margin-bottom: 1rem;">Post Official Program Bulletin</h3>
+          <form id="create-bulletin-form">
+            <div class="form-group">
+              <label class="form-label" for="bulletin-content">Content</label>
+              <textarea class="form-textarea" id="bulletin-content" rows="3" placeholder="Announcement body..." required></textarea>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+              <div class="form-group">
+                <label class="form-label" for="bulletin-location-code">Target Location Code</label>
+                <input class="form-input" type="text" id="bulletin-location-code" placeholder="e.g. WARD-01" required value="WARD-01">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="bulletin-date">Program Date</label>
+                <input class="form-input" type="datetime-local" id="bulletin-date" required>
+              </div>
+            </div>
+            <button class="btn btn-accent" style="margin-top: 1rem;" type="submit">Publish Bulletin</button>
+          </form>
+        </div>
+
+        <div id="bulletin-list" class="bulletin-grid">
+          <!-- Dynamically populated bulletins -->
+        </div>
+      </section>
+
+      <!-- Panel: Approver Checklist Dashboard -->
+      <section id="approver-panel" class="section-panel">
+        <div class="panel-header">
+          <h2 class="panel-title">Politician verification dashboard</h2>
+          <p class="panel-subtitle">Verify details, run checklists, and approve official actions</p>
+        </div>
+        
+        <h3 class="section-divider-title" style="margin-top: 1.5rem; margin-bottom: 1rem; color: var(--text-primary);">📋 Issues Pending Verification</h3>
+        <div id="approver-issues-list" class="issues-grid" style="margin-bottom: 2rem;">
+          <!-- Issues needing verification -->
+        </div>
+
+        <h3 class="section-divider-title" style="margin-top: 2.5rem; margin-bottom: 1rem; color: var(--text-primary);">🗳️ Surveys Pending Approval</h3>
+        <div id="approver-surveys-list" class="issues-grid" style="margin-bottom: 2rem;">
+          <!-- Surveys needing approval -->
+        </div>
+
+        <h3 class="section-divider-title" style="margin-top: 2.5rem; margin-bottom: 1rem; color: var(--text-primary);">📢 News Bulletins Pending Approval</h3>
+        <div id="approver-news-list" class="issues-grid">
+          <!-- News bulletins needing approval -->
+        </div>
+      </section>
+
+      <!-- Panel: Admin Panel -->
+      <section id="admin-panel" class="section-panel">
+        <div class="panel-header">
+          <h2 class="panel-title">Administrative Actions</h2>
+          <p class="panel-subtitle">Configure system parameters and moderate user actions</p>
+        </div>
+
+        <div class="glass-card" style="margin-bottom: 1.5rem;">
+          <h3 style="margin-bottom: 1rem;">System Configuration</h3>
+          <div class="checklist-item">
+            <div class="checklist-label">
+              <span class="checklist-title">Active Election Mode</span>
+              <span class="checklist-desc">Enables strict vetting and shadow banning protocols during elections</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="election-mode-toggle" onchange="toggleElectionMode(this.checked)">
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="glass-card">
+          <h3 style="margin-bottom: 1rem;">Pending Surveys</h3>
+          <div id="admin-surveys-list">
+            <!-- Pending surveys loaded here -->
+          </div>
+        </div>
+      </section>
+
+      <!-- Panel: Settings & API Keys -->
+      <section id="settings-panel" class="section-panel">
+        <div class="panel-header">
+          <h2 class="panel-title">API Settings & Configuration</h2>
+          <p class="panel-subtitle">Configure Google Credentials for Sign-in and Google Maps</p>
+        </div>
+        <div class="glass-card" style="margin-bottom: 1.5rem;">
+          <h3 style="margin-bottom: 1rem;">Google Integration Setup</h3>
+          <form id="settings-form" onsubmit="saveSettings(event)">
+            <div class="form-group">
+              <label class="form-label" for="setting-g-client-id">Google Client ID (OAuth2)</label>
+              <input class="form-input" type="text" id="setting-g-client-id" placeholder="e.g. 123456-abcde.apps.googleusercontent.com">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="setting-g-maps-key">Google Maps API Key</label>
+              <input class="form-input" type="text" id="setting-g-maps-key" placeholder="e.g. AIzaSy...">
+              <p style="color: var(--text-secondary); font-size: 0.8rem; margin-top: 0.5rem;">Note: If no Google Maps key is provided, the platform automatically falls back to Leaflet (OpenStreetMap) so maps remain fully operational offline.</p>
+            </div>
+            <button class="btn btn-primary" type="submit">Save API Settings</button>
+          </form>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Modal: Survey Analytics Summary Window -->
+  <div id="survey-summary-modal" class="modal-overlay" onclick="closeSurveySummaryModalOnBackdrop(event)">
+    <div class="modal-window">
+      <div class="modal-header">
+        <h3 class="modal-title">📊 Survey Analytics Dashboard</h3>
+        <button class="modal-close" onclick="closeSurveySummaryModal()">&times;</button>
+      </div>
+      <div class="modal-body" id="survey-summary-modal-body">
+        <!-- Survey analytics will be rendered here dynamically -->
+        <div class="spinner"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

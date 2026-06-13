@@ -1,0 +1,22 @@
+{
+  "short_name": "Protest App",
+  "name": "Protest App - Social Media Platform",
+  "description": "Citizen issue reporting and emergency routing dashboard",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "./index.html",
+  "background_color": "#070a13",
+  "theme_color": "#6366f1",
+  "display": "standalone",
+  "orientation": "portrait"
+}
