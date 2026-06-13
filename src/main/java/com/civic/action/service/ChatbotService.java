@@ -197,6 +197,9 @@ public class ChatbotService {
         LlmExtractionResult extract;
         try {
             extract = callLlmOrchestrator(message);
+            if (extract == null || extract.getIntent() == null) {
+                throw new IllegalStateException("LLM response or intent is null");
+            }
         } catch (Exception e) {
             log.error("LLM Extraction failed, falling back to basic parsing", e);
             extract = getFallbackExtraction(message);
