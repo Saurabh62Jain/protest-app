@@ -193,6 +193,24 @@ public class ChatbotService {
             }
         }
 
+        // 1.5. Intercept greetings/gestures to guide the user with help options
+        String cleanMsg = message.trim().toLowerCase().replaceAll("[^a-z\\s]", "");
+        if (cleanMsg.equals("hi") || cleanMsg.equals("hello") || cleanMsg.equals("hey") || cleanMsg.equals("yo") 
+                || cleanMsg.equals("greetings") || cleanMsg.equals("hello there") || cleanMsg.equals("hey there")
+                || cleanMsg.equals("hi there") || cleanMsg.equals("good morning") || cleanMsg.equals("good afternoon")
+                || cleanMsg.equals("good evening") || cleanMsg.equals("hii") || cleanMsg.equals("hiii") || cleanMsg.equals("hiiii")
+                || cleanMsg.equals("greet")) {
+            chatResponse.setReply("Hello! 👋 Welcome to the Protest App AI Assistant.\n\n" +
+                    "I am here to help you coordinate local civic improvements and access support. Here is what I can do for you:\n\n" +
+                    "1. ✏️ **Report a Local Issue**: Tell me about a civic problem (e.g. pothole, broken streetlight, garbage build-up, water issue). I will summarize it and ask if you'd like to submit it to your local ward representative.\n" +
+                    "2. 💚 **AI Psychiatry support**: If you are feeling down, anxious, or need emotional support, say something like *\"I need psychiatric help\"* or *\"I feel sad\"*, and I will connect you to our AI Therapist.\n" +
+                    "3. 🚨 **Emergency Services**: If you have an active medical or safety emergency, tell me (e.g. *\"emergency hospital\"* or *\"police break-in\"*), and I will provide immediate helpline numbers.\n" +
+                    "4. 🏢 **NGO Private Help**: Ask for NGO support or private help, and I will share contact directories for local NGOs.\n\n" +
+                    "How can I help you today?");
+            chatResponse.setState("IDLE");
+            return chatResponse;
+        }
+
         // 2. Call Hugging Face API to orchestrate & extract entities
         LlmExtractionResult extract;
         try {
